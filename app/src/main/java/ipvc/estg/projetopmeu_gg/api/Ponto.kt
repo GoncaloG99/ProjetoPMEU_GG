@@ -1,6 +1,6 @@
 package ipvc.estg.projetopmeu_gg.api
 
-data class ponto(
+data class Ponto(
 
     val id: Int,
     val titulo: String,

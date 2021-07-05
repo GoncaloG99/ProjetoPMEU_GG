@@ -1,6 +1,6 @@
 package ipvc.estg.projetopmeu_gg.api
 
-data class tipo(
+data class Tipo(
 
     val id: Int,
     val nome: String

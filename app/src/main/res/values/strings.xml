@@ -18,4 +18,5 @@
     <string name="coordenadas">Coordinates</string>
     <string name="distancia">Distance</string>
     <string name="morada">Address</string>
+    <string name="logout" translatable="false">Logout</string>
 </resources>

@@ -19,4 +19,5 @@
     <string name="distancia">Distance</string>
     <string name="morada">Address</string>
     <string name="logout" translatable="false">Logout</string>
+    <string name="insertTitulo">Insert Title</string>
 </resources>

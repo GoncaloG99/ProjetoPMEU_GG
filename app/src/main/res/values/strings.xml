@@ -20,4 +20,10 @@
     <string name="morada">Address</string>
     <string name="logout" translatable="false">Logout</string>
     <string name="insertTitulo">Insert Title</string>
+    <string name="update">Update</string>
+    <string name="filters">Filters</string>
+    <string name="acidente">Accident</string>
+    <string name="obras">Construction</string>
+    <string name="etc" translatable="false">etc</string>
+    <string name="center">Center</string>
 </resources>

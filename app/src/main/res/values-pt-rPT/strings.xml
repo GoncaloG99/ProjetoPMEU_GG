@@ -18,4 +18,9 @@
     <string name="morada">Morada</string>
     <string name="title_activity_maps">Mapa</string>
     <string name="insertTitulo">Inserir Título</string>
+    <string name="update">Editar</string>
+    <string name="filters">Filtros</string>
+    <string name="acidente">Acidente</string>
+    <string name="center">Centrar</string>
+    <string name="obras">Obras</string>
 </resources>

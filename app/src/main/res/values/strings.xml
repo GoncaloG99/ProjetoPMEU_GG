@@ -28,4 +28,11 @@
     <string name="acidente">Accident</string>
     <string name="obras">Construction</string>
     <string name="markerInserted">Marker inserted</string>
+    <string name="etc" translatable="false">Etc</string>
+    <string name="latitude" translatable="false">Lat</string>
+    <string name="longitude" translatable="false">Long</string>
+    <string name="center">Center</string>
+    <string name="filters">Filters</string>
+    <string name="update">Updade</string>
+    <string name="optionAll">All the markers</string>
 </resources>

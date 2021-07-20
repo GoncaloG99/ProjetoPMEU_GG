@@ -26,4 +26,8 @@
     <string name="acidente">Acidente</string>
     <string name="obras">Construção</string>
     <string name="markerInserted">Ponto inserido</string>
+    <string name="center">Centrar</string>
+    <string name="filters">Filtros</string>
+    <string name="update">Editar</string>
+    <string name="optionAll">Todos os pontos</string>
 </resources>

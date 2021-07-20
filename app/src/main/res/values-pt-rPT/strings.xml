@@ -18,9 +18,12 @@
     <string name="morada">Morada</string>
     <string name="title_activity_maps">Mapa</string>
     <string name="insertTitulo">Inserir Título</string>
-    <string name="update">Editar</string>
-    <string name="filters">Filtros</string>
+    <string name="LoginError">Login Falhado</string>
+    <string name="address">Morada</string>
+    <string name="distance">Distância</string>
+    <string name="meters">Metros</string>
+    <string name="erroObterPontos">Falha a obter pontos</string>
     <string name="acidente">Acidente</string>
-    <string name="center">Centrar</string>
-    <string name="obras">Obras</string>
+    <string name="obras">Construção</string>
+    <string name="markerInserted">Ponto inserido</string>
 </resources>

@@ -1,0 +1,344 @@
+Index: app/src/main/java/ipvc/estg/projetopmeu_gg/MapsActivity.kt
+IDEA additional info:
+Subsystem: com.intellij.openapi.diff.impl.patch.BaseRevisionTextPatchEP
+<+>package ipvc.estg.projetopmeu_gg\r\n\r\nimport android.app.Activity\r\nimport android.content.Context\r\nimport android.content.Intent\r\nimport android.content.SharedPreferences\r\nimport android.content.pm.PackageManager\r\nimport android.location.Geocoder\r\nimport android.location.Location\r\nimport androidx.appcompat.app.AppCompatActivity\r\nimport android.os.Bundle\r\nimport android.view.Menu\r\nimport android.view.MenuInflater\r\nimport android.view.MenuItem\r\nimport android.widget.TextView\r\nimport android.widget.Toast\r\nimport androidx.core.app.ActivityCompat\r\nimport com.google.android.gms.location.*\r\n\r\nimport com.google.android.gms.maps.CameraUpdateFactory\r\nimport com.google.android.gms.maps.GoogleMap\r\nimport com.google.android.gms.maps.OnMapReadyCallback\r\nimport com.google.android.gms.maps.SupportMapFragment\r\nimport com.google.android.gms.maps.model.LatLng\r\nimport com.google.android.gms.maps.model.MarkerOptions\r\nimport ipvc.estg.projetopmeu_gg.api.EndPoints\r\nimport ipvc.estg.projetopmeu_gg.api.Ponto\r\nimport ipvc.estg.projetopmeu_gg.api.ServiceBuilder\r\nimport retrofit2.Call\r\nimport retrofit2.Callback\r\nimport retrofit2.Response\r\n\r\nclass MapsActivity : AppCompatActivity(), OnMapReadyCallback {\r\n\r\n    private lateinit var mMap: GoogleMap\r\n    private lateinit var pontos: List<Ponto>\r\n    private lateinit var lastLocation: Location\r\n    private lateinit var fusedLocationClient: FusedLocationProviderClient\r\n    private lateinit var locationCallback: LocationCallback\r\n    private lateinit var locationRequest: LocationRequest\r\n    private var estgLat: Double = 0.0\r\n    private var estgLong: Double = 0.0\r\n\r\n    private val addPontoActivityRequestCode = 1\r\n\r\n    override fun onCreate(savedInstanceState: Bundle?) {\r\n        super.onCreate(savedInstanceState)\r\n        setContentView(R.layout.activity_maps)\r\n\r\n        estgLat = 41.6935\r\n        estgLong = -8.8467\r\n\r\n        // Obtain the SupportMapFragment and get notified when the map is ready to be used.\r\n        val mapFragment = supportFragmentManager\r\n            .findFragmentById(R.id.map) as SupportMapFragment\r\n        mapFragment.getMapAsync(this)\r\n\r\n        val request = ServiceBuilder.buildService(EndPoints::class.java)\r\n        val call = request.getAllPontos()\r\n\r\n        call.enqueue(object : Callback<List<Ponto>> {\r\n            override fun onResponse(call: Call<List<Ponto>>, response: Response<List<Ponto>>) {\r\n                if (response.isSuccessful) {\r\n                    pontos = response.body()!!\r\n\r\n                    for (ponto in pontos) {\r\n                        mMap.addMarker(\r\n                            MarkerOptions().position(\r\n                                LatLng(\r\n                                    ponto.lati.toDouble(),\r\n                                    ponto.longi.toDouble()\r\n                                )\r\n                            ).title(ponto.titulo)\r\n                        )\r\n                    }\r\n                }\r\n            }\r\n            override fun onFailure(call: Call<List<Ponto>>, t: Throwable)\r\n            {\r\n                Toast.makeText(this@MapsActivity, \"${t.message}\", Toast.LENGTH_SHORT).show()\r\n            }\r\n        })\r\n\r\n        fusedLocationClient = LocationServices.getFusedLocationProviderClient(this)\r\n\r\n        locationCallback = object : LocationCallback() {\r\n            override fun onLocationResult(p0: LocationResult)\r\n            {\r\n                super.onLocationResult(p0)\r\n                lastLocation = p0.lastLocation\r\n                var location = LatLng(lastLocation.latitude, lastLocation.longitude)\r\n\r\n                mMap.moveCamera(CameraUpdateFactory.newLatLngZoom(location, 15F))\r\n\r\n                findViewById<TextView>(R.id.txtcoordenadas).setText(\r\n                    \"Lat: \" + location.latitude +\r\n                            \" - Long: \" + location.longitude)\r\n\r\n                val address = getAddress(lastLocation.latitude, lastLocation.longitude)\r\n                findViewById<TextView>(R.id.txtmorada).setText(\"Morada: \" + address)\r\n\r\n                findViewById<TextView>(R.id.txtdistancia).setText(\r\n                    \"Distância: \" + calculateDistance(\r\n                        lastLocation.latitude, lastLocation.longitude,\r\n                        estgLat, estgLong\r\n                    ).toString() + \" metros\"\r\n                )\r\n            }\r\n        }\r\n\r\n        createLocationRequest()\r\n    }\r\n\r\n    override fun onMapReady(googleMap: GoogleMap) {\r\n        mMap = googleMap\r\n    }\r\n\r\n    companion object {\r\n        // add to implement last known location\r\n        private const val LOCATION_PERMISSION_REQUEST_CODE = 1\r\n        //added to implement location periodic updates\r\n        private const val REQUEST_CHECK_SETTINGS = 2\r\n    }\r\n\r\n    private fun startLocationUpdates() {\r\n        if(ActivityCompat.checkSelfPermission(this,\r\n                android.Manifest.permission.ACCESS_FINE_LOCATION) != PackageManager.PERMISSION_GRANTED)\r\n        {\r\n            ActivityCompat.requestPermissions(this,\r\n                arrayOf(android.Manifest.permission.ACCESS_FINE_LOCATION),\r\n                LOCATION_PERMISSION_REQUEST_CODE)\r\n            return\r\n        }\r\n        fusedLocationClient.requestLocationUpdates(locationRequest, locationCallback, null /* Looper */)\r\n    }\r\n\r\n    private fun createLocationRequest() {\r\n        locationRequest = LocationRequest()\r\n        locationRequest.interval = 3000\r\n        locationRequest.priority = LocationRequest.PRIORITY_HIGH_ACCURACY\r\n    }\r\n\r\n    private fun getAddress(lat: Double, lng: Double): String {\r\n        val geocoder = Geocoder(this)\r\n        val list = geocoder.getFromLocation(lat, lng, 1)\r\n        return list[0].getAddressLine(0)\r\n    }\r\n\r\n    fun calculateDistance(lat1: Double, lng1: Double, lat2: Double, lng2: Double): Float {\r\n        val results = FloatArray(1)\r\n        Location.distanceBetween(lat1, lng1, lat2, lng2, results)\r\n        return results[0]\r\n    }\r\n\r\n    override fun onCreateOptionsMenu(menu: Menu): Boolean\r\n    {\r\n        val inflater: MenuInflater = menuInflater\r\n        inflater.inflate(R.menu.menu_mapa, menu)\r\n        return true\r\n    }\r\n\r\n    override fun onOptionsItemSelected(item: MenuItem): Boolean\r\n    {\r\n        val sharedPref: SharedPreferences = getSharedPreferences(\r\n            getString(R.string.sharedPref), Context.MODE_PRIVATE)\r\n        var location = LatLng(lastLocation.latitude, lastLocation.longitude)\r\n        return when (item.itemId)\r\n        {\r\n            R.id.optionAdd ->\r\n            {\r\n                val intent = Intent(this@MapsActivity, AddPonto::class.java)\r\n                intent.putExtra(\"ID\", sharedPref.getString(\"ID_Key\", \"defaultname\"))\r\n                intent.putExtra(\"LATLONG\", location.toString());\r\n                startActivityForResult(intent, addPontoActivityRequestCode)\r\n                true\r\n            }\r\n            R.id.optionLogout ->\r\n            {\r\n                with (sharedPref.edit()) {\r\n                    putString(\"User_Key\", null)\r\n                    putString(\"Pass_Key\", null)\r\n                    putString(\"ID_Key\", null)\r\n                    apply()\r\n                }\r\n                finish()\r\n                true\r\n            }\r\n            else -> super.onOptionsItemSelected(item)\r\n        }\r\n    }\r\n\r\n    override fun onActivityResult(requestCode: Int, resultCode: Int, data: Intent?) {\r\n        super.onActivityResult(requestCode, resultCode, data)\r\n        if (resultCode == Activity.RESULT_OK)\r\n        {\r\n            val sharedPref: SharedPreferences = getSharedPreferences(\r\n                getString(R.string.sharedPref), Context.MODE_PRIVATE)\r\n            if(requestCode == addPontoActivityRequestCode)\r\n            {\r\n\r\n                var pLatLong: LatLng\r\n                val latlong = data?.getStringExtra(AddPonto.LATLONG)!!.split(\",\".toRegex()).toTypedArray()\r\n                try\r\n                {\r\n                    val latitude = latlong[0].substring(10, latlong[0].length - 1).toDouble()\r\n                    val longitude = latlong[1].substring(0, latlong[1].length - 1).toDouble()\r\n\r\n                    val pTitulo = data?.getStringExtra(AddPonto.ID)\r\n                    pLatLong = LatLng(latitude, longitude)\r\n                    val pTipo = data?.getStringExtra(AddPonto.TIPO)\r\n\r\n                    if (pTitulo!= null && pTipo != null) {\r\n                        val request = ServiceBuilder.buildService(EndPoints::class.java)\r\n                        val call = request.addPonto(pTitulo, latitude.toString(), longitude.toString(), pTipo,\r\n                            sharedPref.getString(\"ID_Key\", \"defaultname\")!!.toInt())\r\n\r\n                        call.enqueue(object : Callback<Ponto> {\r\n                            override fun onResponse(call: Call<Ponto>, response: Response<Ponto>) {\r\n                                if (response.isSuccessful) {\r\n                                    mMap.addMarker(\r\n                                        MarkerOptions().position(\r\n                                            LatLng(\r\n                                                pLatLong.latitude,\r\n                                                pLatLong.longitude\r\n                                            )\r\n                                        ).title(pTitulo)\r\n                                    )\r\n                                    Toast.makeText(this@MapsActivity, \"Ponto inserido com sucesso\", Toast.LENGTH_SHORT).show()\r\n                                }\r\n                            }\r\n                            override fun onFailure(call: Call<Ponto>, t: Throwable)\r\n                            {\r\n                                Toast.makeText(this@MapsActivity, \"${t.message}\", Toast.LENGTH_SHORT).show()\r\n                            }\r\n                        })\r\n                    }\r\n                } catch (X: Exception)\r\n                {\r\n                    Toast.makeText(this@MapsActivity, X.message, Toast.LENGTH_SHORT).show()\r\n                }\r\n            }\r\n        }\r\n        else\r\n        {\r\n            Toast.makeText(\r\n                applicationContext,\r\n                R.string.empty_not_saved,\r\n                Toast.LENGTH_LONG).show()\r\n        }\r\n    }\r\n\r\n    override fun onPause() {\r\n        super.onPause()\r\n        fusedLocationClient.removeLocationUpdates(locationCallback)\r\n    }\r\n\r\n    public override fun onResume() {\r\n        super.onResume()\r\n        startLocationUpdates()\r\n    }\r\n}
+Subsystem: com.intellij.openapi.diff.impl.patch.CharsetEP
+<+>UTF-8
+===================================================================
+--- app/src/main/java/ipvc/estg/projetopmeu_gg/MapsActivity.kt	(revision 1de8b3a15fd2e89e5f3cc3124ca597b0fa1b85ed)
++++ app/src/main/java/ipvc/estg/projetopmeu_gg/MapsActivity.kt	(date 1626823049848)
+@@ -1,5 +1,6 @@
+ package ipvc.estg.projetopmeu_gg
+ 
++import android.annotation.SuppressLint
+ import android.app.Activity
+ import android.content.Context
+ import android.content.Intent
+@@ -40,8 +41,12 @@
+     private lateinit var locationRequest: LocationRequest
+     private var estgLat: Double = 0.0
+     private var estgLong: Double = 0.0
++    private var FlagHAPPY: Int = 0
++    private var MapFLAG: Int = 0
+ 
+     private val addPontoActivityRequestCode = 1
++    private val updatePontoActivityRequestCode = 2
++    private val removePontoActivityRequestCode = 3
+ 
+     override fun onCreate(savedInstanceState: Bundle?) {
+         super.onCreate(savedInstanceState)
+@@ -55,55 +60,36 @@
+             .findFragmentById(R.id.map) as SupportMapFragment
+         mapFragment.getMapAsync(this)
+ 
+-        val request = ServiceBuilder.buildService(EndPoints::class.java)
+-        val call = request.getAllPontos()
+-
+-        call.enqueue(object : Callback<List<Ponto>> {
+-            override fun onResponse(call: Call<List<Ponto>>, response: Response<List<Ponto>>) {
+-                if (response.isSuccessful) {
+-                    pontos = response.body()!!
+-
+-                    for (ponto in pontos) {
+-                        mMap.addMarker(
+-                            MarkerOptions().position(
+-                                LatLng(
+-                                    ponto.lati.toDouble(),
+-                                    ponto.longi.toDouble()
+-                                )
+-                            ).title(ponto.titulo)
+-                        )
+-                    }
+-                }
+-            }
+-            override fun onFailure(call: Call<List<Ponto>>, t: Throwable)
+-            {
+-                Toast.makeText(this@MapsActivity, "${t.message}", Toast.LENGTH_SHORT).show()
+-            }
+-        })
++        PopulateMap(0)
+ 
+         fusedLocationClient = LocationServices.getFusedLocationProviderClient(this)
+ 
+         locationCallback = object : LocationCallback() {
++            @SuppressLint("SetTextI18n")
+             override fun onLocationResult(p0: LocationResult)
+             {
+                 super.onLocationResult(p0)
+                 lastLocation = p0.lastLocation
+                 var location = LatLng(lastLocation.latitude, lastLocation.longitude)
+ 
+-                mMap.moveCamera(CameraUpdateFactory.newLatLngZoom(location, 15F))
++                if(FlagHAPPY == 0)
++                {
++                    mMap.moveCamera(CameraUpdateFactory.newLatLngZoom(location, 15F))
++                    FlagHAPPY++
++                }
+ 
+                 findViewById<TextView>(R.id.txtcoordenadas).setText(
+-                    "Lat: " + location.latitude +
+-                            " - Long: " + location.longitude)
++                    getString(R.string.latitude)+ " " + location.latitude +
++                            " - " + getString(R.string.longitude) + location.longitude)
+ 
+                 val address = getAddress(lastLocation.latitude, lastLocation.longitude)
+-                findViewById<TextView>(R.id.txtmorada).setText("Morada: " + address)
++                findViewById<TextView>(R.id.txtmorada).setText(getString(R.string.address) + address)
+ 
+                 findViewById<TextView>(R.id.txtdistancia).setText(
+-                    "Distância: " + calculateDistance(
++                    getString(R.string.distance) + calculateDistance(
+                         lastLocation.latitude, lastLocation.longitude,
+                         estgLat, estgLong
+-                    ).toString() + " metros"
++                    ).toString() + " " + getString(R.string.meters)
+                 )
+             }
+         }
+@@ -185,6 +171,45 @@
+                 finish()
+                 true
+             }
++            R.id.optionUpdate ->
++            {
++                /*val intent = Intent(this@MapsActivity, AddPonto::class.java)
++                intent.putExtra("ID", sharedPref.getString("ID_Key", "defaultname"))
++                startActivityForResult(intent, updatePontoActivityRequestCode)*/
++                true
++            }
++            R.id.optionRemove ->
++            {
++                /*val intent = Intent(this@MapsActivity, AddPonto::class.java)
++                intent.putExtra("ID", sharedPref.getString("ID_Key", "defaultname"))
++                startActivityForResult(intent, removePontoActivityRequestCode)*/
++                true
++            }
++            R.id.optionCenter ->
++            {
++                mMap.moveCamera(CameraUpdateFactory.newLatLngZoom(location, 15F))
++                true
++            }
++            R.id.optionAll ->
++            {
++                PopulateMap(0)
++                true
++            }
++            R.id.optionAcidente ->
++            {
++                PopulateMap(1)
++                true
++            }
++            R.id.optionObras ->
++            {
++                PopulateMap(2)
++                true
++            }
++            R.id.optionEtc ->
++            {
++                PopulateMap(3)
++                true
++            }
+             else -> super.onOptionsItemSelected(item)
+         }
+     }
+@@ -225,7 +250,8 @@
+                                             )
+                                         ).title(pTitulo)
+                                     )
+-                                    Toast.makeText(this@MapsActivity, "Ponto inserido com sucesso", Toast.LENGTH_SHORT).show()
++                                    Toast.makeText(this@MapsActivity, getString(R.string.markerInserted), Toast.LENGTH_SHORT).show()
++
+                                 }
+                             }
+                             override fun onFailure(call: Call<Ponto>, t: Throwable)
+@@ -258,4 +284,75 @@
+         super.onResume()
+         startLocationUpdates()
+     }
++
++    fun PopulateMap(pTipo_ID: Int)
++    {
++        if(MapFLAG == 1)
++        {
++            mMap.clear()
++            MapFLAG = 0
++        }
++        val request = ServiceBuilder.buildService(EndPoints::class.java)
++        var call: Call<List<Ponto>>
++
++        if(pTipo_ID == 0)
++        {
++            call = request.getAllPontos()
++        }
++        else
++        {
++            call = request.getPontosFilter(pTipo_ID)
++        }
++
++        call.enqueue(object : Callback<List<Ponto>> {
++            override fun onResponse(call: Call<List<Ponto>>, response: Response<List<Ponto>>) {
++                if (response.isSuccessful) {
++                    pontos = response.body()!!
++
++                    for (ponto in pontos) {
++                        if(ponto.tipo_id == 1)
++                        {
++                            mMap.addMarker(
++                                MarkerOptions().position(
++                                    LatLng(
++                                        ponto.lati.toDouble(),
++                                        ponto.longi.toDouble()
++                                    )
++                                ).title(ponto.titulo + " - " + getString(R.string.acidente))
++                            )
++                        }
++                        else
++                            if(ponto.tipo_id == 2)
++                            {
++                                mMap.addMarker(
++                                    MarkerOptions().position(
++                                        LatLng(
++                                            ponto.lati.toDouble(),
++                                            ponto.longi.toDouble()
++                                        )
++                                    ).title(ponto.titulo + " - " + getString(R.string.obras))
++                                )
++                            }
++                            else
++                                if(ponto.tipo_id == 3)
++                                {
++                                    mMap.addMarker(
++                                        MarkerOptions().position(
++                                            LatLng(
++                                                ponto.lati.toDouble(),
++                                                ponto.longi.toDouble()
++                                            )
++                                        ).title(ponto.titulo + " - " + getString(R.string.etc))
++                                    )
++                                }
++                    }
++                    MapFLAG++
++                }
++            }
++            override fun onFailure(call: Call<List<Ponto>>, t: Throwable)
++            {
++                Toast.makeText(this@MapsActivity, getString(R.string.erroObterPontos), Toast.LENGTH_SHORT).show()
++            }
++        })
++    }
+ }
+\ No newline at end of file
+Index: app/src/main/res/values-pt-rPT/strings.xml
+IDEA additional info:
+Subsystem: com.intellij.openapi.diff.impl.patch.BaseRevisionTextPatchEP
+<+><?xml version=\"1.0\" encoding=\"utf-8\"?>\r\n<resources>\r\n    <string name=\"app_name\">Projeto_GG</string>\r\n    <string name=\"add\">Adicionar</string>\r\n    <string name=\"remove\">Remover</string>\r\n    <string name=\"edit\">Editar</string>\r\n    <string name=\"selectMultiple\">Selecionar Múltiplo</string>\r\n    <string name=\"removeAll\">Remover Tudo</string>\r\n    <string name=\"insertTitle\">Inserir Título</string>\r\n    <string name=\"insertDescription\">Inserir Descrição</string>\r\n    <string name=\"empty_not_saved\" translatable=\"false\">Valores Não Inseridos</string>\r\n    <string name=\"save\">Guardar</string>\r\n    <string name=\"username\">Nome de Utilizador</string>\r\n    <string name=\"notes\">Notas</string>\r\n    <string name=\"password\">Palavra Chave</string>\r\n    <string name=\"coordenadas\">Coordenadas</string>\r\n    <string name=\"distancia\">Distância</string>\r\n    <string name=\"morada\">Morada</string>\r\n    <string name=\"title_activity_maps\">Mapa</string>\r\n    <string name=\"insertTitulo\">Inserir Título</string>\r\n</resources>
+Subsystem: com.intellij.openapi.diff.impl.patch.CharsetEP
+<+>UTF-8
+===================================================================
+--- app/src/main/res/values-pt-rPT/strings.xml	(revision 1de8b3a15fd2e89e5f3cc3124ca597b0fa1b85ed)
++++ app/src/main/res/values-pt-rPT/strings.xml	(date 1626823341939)
+@@ -18,4 +18,12 @@
+     <string name="morada">Morada</string>
+     <string name="title_activity_maps">Mapa</string>
+     <string name="insertTitulo">Inserir Título</string>
++    <string name="LoginError">Login Falhado</string>
++    <string name="address">Morada</string>
++    <string name="distance">Distância</string>
++    <string name="meters">Metros</string>
++    <string name="erroObterPontos">Falha a obter pontos</string>
++    <string name="acidente">Acidente</string>
++    <string name="obras">Construção</string>
++    <string name="markerInserted">Ponto inserido</string>
+ </resources>
+\ No newline at end of file
+Index: app/src/main/res/menu/menu_mapa.xml
+IDEA additional info:
+Subsystem: com.intellij.openapi.diff.impl.patch.BaseRevisionTextPatchEP
+<+><?xml version=\"1.0\" encoding=\"utf-8\"?>\r\n<menu xmlns:android=\"http://schemas.android.com/apk/res/android\"\r\n    xmlns:app=\"http://schemas.android.com/apk/res-auto\">\r\n    <item\r\n        android:id=\"@+id/optionLogout\"\r\n        android:title=\"@string/logout\"\r\n        app:showAsAction=\"always\" />\r\n    <item\r\n        android:id=\"@+id/optionAdd\"\r\n        android:title=\"@string/add\"\r\n        app:showAsAction=\"always\" />\r\n\r\n    <item\r\n        android:id=\"@+id/remove\"\r\n        android:title=\"@string/remove\"\r\n        app:showAsAction=\"always\"></item>\r\n\r\n</menu>
+Subsystem: com.intellij.openapi.diff.impl.patch.CharsetEP
+<+>UTF-8
+===================================================================
+--- app/src/main/res/menu/menu_mapa.xml	(revision 1de8b3a15fd2e89e5f3cc3124ca597b0fa1b85ed)
++++ app/src/main/res/menu/menu_mapa.xml	(date 1626823515620)
+@@ -8,11 +8,30 @@
+     <item
+         android:id="@+id/optionAdd"
+         android:title="@string/add"
+-        app:showAsAction="always" />
+-
++        app:showAsAction="ifRoom" />
++    <item
++        android:id="@+id/optionUpdate"
++        android:title="@string/update"
++        app:showAsAction="ifRoom" />
+     <item
+-        android:id="@+id/remove"
++        android:id="@+id/optionRemove"
+         android:title="@string/remove"
+-        app:showAsAction="always"></item>
+-
+-</menu>
+\ No newline at end of file
++        app:showAsAction="ifRoom" />
++    <item
++        android:id="@+id/subMenuFilters"
++        android:title="@string/filters"
++        app:showAsAction="ifRoom">
++        <menu>
++            <item android:id="@+id/optionAcidente"
++                android:title="@string/acidente"/>
++            <item android:id="@+id/optionObras"
++                android:title="@string/obras"/>
++            <item android:id="@+id/optionEtc"
++                android:title="@string/etc"/>
++        </menu>
++    </item>
++    <item
++        android:id="@+id/optionCenter"
++        android:title="@string/center"
++        app:showAsAction="ifRoom" />
++</menu>
+Index: app/src/main/java/ipvc/estg/projetopmeu_gg/LoginActivity.kt
+IDEA additional info:
+Subsystem: com.intellij.openapi.diff.impl.patch.BaseRevisionTextPatchEP
+<+>package ipvc.estg.projetopmeu_gg\r\n\r\nimport android.content.Context\r\nimport android.content.Intent\r\nimport android.content.SharedPreferences\r\nimport androidx.appcompat.app.AppCompatActivity\r\nimport android.os.Bundle\r\nimport android.widget.Button\r\nimport android.widget.EditText\r\nimport android.widget.Toast\r\nimport ipvc.estg.projetopmeu_gg.api.EndPoints\r\nimport ipvc.estg.projetopmeu_gg.api.ServiceBuilder\r\nimport ipvc.estg.projetopmeu_gg.api.Utilizador\r\nimport retrofit2.Call\r\nimport retrofit2.Callback\r\nimport retrofit2.Response\r\n\r\nclass LoginActivity : AppCompatActivity()\r\n{\r\n    private val mapsActivityRequestCode = 1\r\n\r\n    private lateinit var nomeText: EditText\r\n    private lateinit var passText: EditText\r\n\r\n    override fun onCreate(savedInstanceState: Bundle?)\r\n    {\r\n        super.onCreate(savedInstanceState)\r\n        setContentView(R.layout.activity_login)\r\n\r\n        nomeText = findViewById(R.id.editTextUsername)\r\n        passText = findViewById(R.id.editTextPassword)\r\n\r\n        val sharedPref: SharedPreferences = getSharedPreferences(\r\n            getString(R.string.sharedPref), Context.MODE_PRIVATE)\r\n\r\n        val sharedUserValue  = sharedPref.getString(\"User_Key\" ,\"defaultname\")\r\n        val sharedPassValue = sharedPref.getString(\"Pass_key\" ,\"defaultname\")\r\n\r\n        if(!(sharedUserValue.equals(\"defaultname\") && sharedPassValue.equals(\"defaultname\"))) {\r\n            val intent = Intent(this@LoginActivity, MapsActivity::class.java)\r\n            startActivityForResult(intent, mapsActivityRequestCode)\r\n        }\r\n\r\n        val notesButton = findViewById<Button>(R.id.notesButton)\r\n        notesButton.setOnClickListener {\r\n            val intent = Intent(this@LoginActivity, NotasActivity::class.java)\r\n            startActivity(intent)\r\n        }\r\n\r\n        val loginButton = findViewById<Button>(R.id.loginButton)\r\n        loginButton.setOnClickListener {\r\n            val request = ServiceBuilder.buildService(EndPoints::class.java)\r\n            val call = request.getUtilizador(nomeText.text.toString(), passText.text.toString())\r\n            call.enqueue(object : Callback<Utilizador> {\r\n                override fun onResponse(call: Call<Utilizador>, response: Response<Utilizador>) {\r\n                    if (response.isSuccessful) {\r\n                        with (sharedPref.edit()) {\r\n                            putString(\"User_Key\", nomeText.text.toString())\r\n                            putString(\"Pass_Key\", passText.text.toString())\r\n                            putString(\"ID_Key\", response.body()!!.id.toString())\r\n                            apply()\r\n                        }\r\n                        val intent = Intent(this@LoginActivity, MapsActivity::class.java)\r\n                        startActivityForResult(intent, mapsActivityRequestCode)\r\n                    }\r\n                    Toast.makeText(this@LoginActivity, response.body()!!.nome, Toast.LENGTH_SHORT).show()\r\n                }\r\n\r\n                override fun onFailure(call: Call<Utilizador>, t: Throwable) {\r\n                    Toast.makeText(this@LoginActivity, t.message, Toast.LENGTH_SHORT).show()\r\n                }\r\n            })\r\n        }\r\n    }\r\n}
+Subsystem: com.intellij.openapi.diff.impl.patch.CharsetEP
+<+>UTF-8
+===================================================================
+--- app/src/main/java/ipvc/estg/projetopmeu_gg/LoginActivity.kt	(revision 1de8b3a15fd2e89e5f3cc3124ca597b0fa1b85ed)
++++ app/src/main/java/ipvc/estg/projetopmeu_gg/LoginActivity.kt	(date 1626822570521)
+@@ -67,7 +67,7 @@
+                 }
+ 
+                 override fun onFailure(call: Call<Utilizador>, t: Throwable) {
+-                    Toast.makeText(this@LoginActivity, t.message, Toast.LENGTH_SHORT).show()
++                    Toast.makeText(this@LoginActivity, getString(R.string.LoginError), Toast.LENGTH_SHORT).show()
+                 }
+             })
+         }
+Index: app/src/main/res/values/strings.xml
+IDEA additional info:
+Subsystem: com.intellij.openapi.diff.impl.patch.BaseRevisionTextPatchEP
+<+><resources>\r\n    <string name=\"app_name\">Project_GG</string>\r\n    <string name=\"add\">Add</string>\r\n    <string name=\"remove\">Remove</string>\r\n    <string name=\"edit\">Edit</string>\r\n    <string name=\"selectMultiple\">Select Multiple</string>\r\n    <string name=\"sharedPref\" translatable=\"false\">shared File</string>\r\n    <string name=\"removeAll\">Remove All</string>\r\n    <string name=\"insertTitle\">Insert Title</string>\r\n    <string name=\"insertDescription\">insert Description</string>\r\n    <string name=\"empty_not_saved\">Values Not Inserted</string>\r\n    <string name=\"save\">Save</string>\r\n    <string name=\"username\">Username</string>\r\n    <string name=\"password\">Password</string>\r\n    <string name=\"login\" translatable=\"false\">Login</string>\r\n    <string name=\"notes\">Notes</string>\r\n    <string name=\"title_activity_maps\">Map</string>\r\n    <string name=\"coordenadas\">Coordinates</string>\r\n    <string name=\"distancia\">Distance</string>\r\n    <string name=\"morada\">Address</string>\r\n    <string name=\"logout\" translatable=\"false\">Logout</string>\r\n    <string name=\"insertTitulo\">Insert Title</string>\r\n</resources>
+Subsystem: com.intellij.openapi.diff.impl.patch.CharsetEP
+<+>UTF-8
+===================================================================
+--- app/src/main/res/values/strings.xml	(revision 1de8b3a15fd2e89e5f3cc3124ca597b0fa1b85ed)
++++ app/src/main/res/values/strings.xml	(date 1626823341949)
+@@ -20,4 +20,15 @@
+     <string name="morada">Address</string>
+     <string name="logout" translatable="false">Logout</string>
+     <string name="insertTitulo">Insert Title</string>
++    <string name="LoginError">Login Failed</string>
++    <string name="latitude" translatable="false">Lat</string>
++    <string name="longitude" translatable="false">Long</string>
++    <string name="address">Address</string>
++    <string name="distance">Distance</string>
++    <string name="meters">Meters</string>
++    <string name="erroObterPontos">Failure getting markers</string>
++    <string name="acidente">Accident</string>
++    <string name="obras">Construction</string>
++    <string name="etc" translatable="false">Etc</string>
++    <string name="markerInserted">Marker inserted</string>
+ </resources>
+\ No newline at end of file

@@ -16,21 +16,21 @@
     <string name="notes">Notes</string>
     <string name="title_activity_maps">Map</string>
     <string name="coordenadas">Coordinates</string>
-    <string name="distancia">Distance</string>
+    <string name="distancia">"Distance:  "</string>
     <string name="morada">Address</string>
     <string name="logout" translatable="false">Logout</string>
     <string name="insertTitulo">Insert Title</string>
     <string name="LoginError">Login Failed</string>
-    <string name="address">Address</string>
-    <string name="distance">Distance</string>
+    <string name="address">"Address: "</string>
+    <string name="distance">Distance:</string>
     <string name="meters">Meters</string>
     <string name="erroObterPontos">Error getting markers</string>
     <string name="acidente">Accident</string>
     <string name="obras">Construction</string>
     <string name="markerInserted">Marker inserted</string>
     <string name="etc" translatable="false">Etc</string>
-    <string name="latitude" translatable="false">Lat</string>
-    <string name="longitude" translatable="false">Long</string>
+    <string name="latitude" translatable="false">"Lat: "</string>
+    <string name="longitude" translatable="false">"Long: "</string>
     <string name="center">Center</string>
     <string name="filters">Filters</string>
     <string name="update">Updade</string>
